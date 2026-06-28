@@ -2,11 +2,10 @@ package com.example.copilotui.ui.screens
 
 import android.graphics.Bitmap
 import android.view.MotionEvent
-import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -23,15 +22,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.copilotui.ui.theme.*
@@ -150,7 +149,7 @@ fun ARConstructionScreen(
                 } else {
                     Offset(screenW / 2f, screenH / 2f)
                 }
-                StepGhostOverlay(stepIndex = stepIndex, centerOffset = anchorScreen)
+                MinecraftAROverlay(stepIndex = stepIndex, centerOffset = anchorScreen)
                 Box(
                     modifier = Modifier
                         .absoluteOffset {
@@ -277,122 +276,142 @@ fun ARConstructionScreen(
 }
 
 @Composable
-private fun StepGhostOverlay(stepIndex: Int, centerOffset: Offset) {
-    val infiniteTransition = rememberInfiniteTransition(label = "ghost")
-    val pulse by infiniteTransition.animateFloat(
-        initialValue = 0.5f,
-        targetValue = 1.0f,
-        animationSpec = infiniteRepeatable(tween(800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "pulse",
+private fun MinecraftAROverlay(stepIndex: Int, centerOffset: Offset) {
+    val density = LocalDensity.current
+    val bs = with(density) { 48.dp.toPx() }
+    val bh = bs * 0.5f
+    val gx = centerOffset.x - 0.5f * bs
+    val gy = centerOffset.y - 1.5f * bh * 0.5f
+
+    fun pos(i: Int, j: Int, k: Int = 0) = Offset(
+        gx + (i - j) * bs,
+        gy + (i + j) * bh * 0.5f - k * bh,
     )
 
-    AnimatedContent(
-        targetState = stepIndex,
-        transitionSpec = { fadeIn(tween(350)) togetherWith fadeOut(tween(250)) },
-        label = "stepOverlay",
-    ) { step ->
-        Box(
-            modifier = Modifier
-                .absoluteOffset {
-                    IntOffset(
-                        (centerOffset.x - 170.dp.toPx()).toInt(),
-                        (centerOffset.y - 90.dp.toPx()).toInt(),
-                    )
-                }
-                .size(width = 340.dp, height = 180.dp),
-            contentAlignment = Alignment.Center,
-        ) {
+    val ijFront = listOf(0 to 0, 1 to 0, 0 to 1, 2 to 0, 1 to 1, 2 to 1)
+
+    val pillarProgress by animateFloatAsState(
+        targetValue = if (stepIndex >= 1) 3f else 0f,
+        animationSpec = tween(600),
+        label = "pillar",
+    )
+    val sparkle by rememberInfiniteTransition(label = "sparkle").animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1200), RepeatMode.Reverse),
+        label = "sp",
+    )
+
+    Box(modifier = Modifier.fillMaxSize()) {
+
+        // Layer 1 — Foundation, always visible
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            for ((i, j) in ijFront) {
+                val p = pos(i, j)
+                drawBlock(p.x, p.y, bs, Color(0xFFC8C8C8), Color(0xFF888888), Color(0xFF707070))
+            }
+        }
+
+        // Layer 2 — Corner posts, rise up
+        AnimatedVisibility(visible = stepIndex >= 1, enter = fadeIn(tween(400))) {
             Canvas(modifier = Modifier.fillMaxSize()) {
-                val teal = Color(0xFF00BCD4)
-                val orange = Color(0xFFFF6B35)
-                val green = Color(0xFF4CAF50)
-                val cx = size.width / 2f
-                val cy = size.height / 2f
-                val sw = 260.dp.toPx()
-                val sh = 80.dp.toPx()
-                val sk = 40.dp.toPx()
-                val wallLift = 45.dp.toPx()
-                val dash = PathEffect.dashPathEffect(floatArrayOf(12f, 8f))
-
-                // Isometric parallelogram: flat slab centered at (cx, cy), shifted up by yOff
-                fun slabPath(yOff: Float = 0f) = Path().apply {
-                    moveTo(cx - sw / 2 + sk, cy - sh / 2 + yOff)
-                    lineTo(cx + sw / 2 + sk, cy - sh / 2 + yOff)
-                    lineTo(cx + sw / 2 - sk, cy + sh / 2 + yOff)
-                    lineTo(cx - sw / 2 - sk, cy + sh / 2 + yOff)
-                    close()
-                }
-
-                // Parallelogram corner points at a given y-offset
-                fun corners(yOff: Float = 0f) = listOf(
-                    Offset(cx - sw / 2 + sk, cy - sh / 2 + yOff),
-                    Offset(cx + sw / 2 + sk, cy - sh / 2 + yOff),
-                    Offset(cx + sw / 2 - sk, cy + sh / 2 + yOff),
-                    Offset(cx - sw / 2 - sk, cy + sh / 2 + yOff),
-                )
-
-                when (step) {
-                    0 -> { // Mark Foundation
-                        drawPath(slabPath(), teal.copy(alpha = 0.15f))
-                        drawPath(slabPath(), teal.copy(alpha = 0.7f),
-                            style = Stroke(width = 2.dp.toPx()))
-                    }
-                    1 -> { // Place Corner Posts
-                        drawPath(slabPath(), teal.copy(alpha = 0.10f))
-                        drawPath(slabPath(), teal.copy(alpha = 0.5f),
-                            style = Stroke(width = 1.5.dp.toPx()))
-                        corners().forEach { pt ->
-                            drawCircle(teal.copy(alpha = pulse), radius = 10.dp.toPx(), center = pt)
-                        }
-                    }
-                    2 -> { // Raise Walls
-                        drawPath(slabPath(), teal.copy(alpha = 0.10f))
-                        drawPath(slabPath(), teal.copy(alpha = 0.4f),
-                            style = Stroke(width = 1.5.dp.toPx()))
-                        drawPath(slabPath(-wallLift), teal.copy(alpha = 0.7f),
-                            style = Stroke(width = 2.dp.toPx(), pathEffect = dash))
-                        corners().zip(corners(-wallLift)).forEach { (base, top) ->
-                            drawLine(teal.copy(0.5f), base, top,
-                                strokeWidth = 1.5.dp.toPx(), pathEffect = dash)
-                        }
-                    }
-                    3 -> { // Install Roof Frame
-                        drawPath(slabPath(), teal.copy(alpha = 0.08f))
-                        drawPath(slabPath(-wallLift), teal.copy(alpha = 0.3f),
-                            style = Stroke(width = 1.dp.toPx()))
-                        val roofCorners = corners(-wallLift)
-                        drawLine(orange.copy(0.85f), roofCorners[0], roofCorners[2],
-                            strokeWidth = 2.5.dp.toPx(), pathEffect = dash)
-                        drawLine(orange.copy(0.85f), roofCorners[1], roofCorners[3],
-                            strokeWidth = 2.5.dp.toPx(), pathEffect = dash)
-                    }
-                    4 -> { // Secure & Finish
-                        drawPath(slabPath(), green.copy(alpha = 0.15f))
-                        drawPath(slabPath(), green.copy(alpha = 0.7f),
-                            style = Stroke(width = 2.dp.toPx()))
-                        val checkPath = Path().apply {
-                            moveTo(cx - 30.dp.toPx(), cy)
-                            lineTo(cx - 5.dp.toPx(), cy + 20.dp.toPx())
-                            lineTo(cx + 30.dp.toPx(), cy - 20.dp.toPx())
-                        }
-                        drawPath(checkPath, green.copy(alpha = 0.9f),
-                            style = Stroke(width = 4.dp.toPx(),
-                                cap = StrokeCap.Round, join = StrokeJoin.Round))
+                val maxK = pillarProgress.toInt().coerceIn(0, 3)
+                for ((ci, cj) in listOf(0 to 0, 2 to 0, 0 to 1, 2 to 1)) {
+                    for (k in 1..maxK) {
+                        val p = pos(ci, cj, k)
+                        drawBlock(p.x, p.y, bs, Color(0xFFB8924A), Color(0xFF8B6914), Color(0xFF6B4F10))
                     }
                 }
             }
+        }
 
-            if (step == 0) {
+        // Layer 3 — Walls
+        AnimatedVisibility(visible = stepIndex >= 2, enter = fadeIn(tween(400))) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                for (k in 1..2) {
+                    val p = pos(1, 1, k)
+                    drawBlock(p.x, p.y, bs, Color(0xFFAAAAAA), Color(0xFF777777), Color(0xFF606060))
+                }
+            }
+        }
+
+        // Layer 4 — Roof, drops in
+        AnimatedVisibility(
+            visible = stepIndex >= 3,
+            enter = fadeIn(tween(400)) + slideInVertically(
+                initialOffsetY = { -it / 3 },
+                animationSpec = tween(600),
+            ),
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                for ((i, j) in ijFront) {
+                    val p = pos(i, j, 3)
+                    drawBlock(p.x, p.y, bs, Color(0xFF6B4F10), Color(0xFF4A3520), Color(0xFF3A2510))
+                }
+            }
+        }
+
+        // Layer 5 — Complete details
+        AnimatedVisibility(visible = stepIndex >= 4, enter = fadeIn(tween(400))) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val dp = pos(1, 0, 0)
+                    val dw = bs * 0.55f; val dh = bh * 1.4f
+                    drawRect(Color(0xFF3E2010),
+                        topLeft = Offset(dp.x - dw * 0.5f, dp.y - dh),
+                        size = Size(dw, dh))
+                    for (k in 1..2) {
+                        val wp = pos(1, 1, k)
+                        drawRect(Color(0xFF87CEEB).copy(alpha = 0.8f),
+                            topLeft = Offset(wp.x - bs * 0.28f, wp.y - bh * 0.55f),
+                            size = Size(bs * 0.45f, bh * 0.4f))
+                    }
+                    listOf(
+                        Offset(-80f, -130f), Offset(90f, -110f), Offset(0f, -170f),
+                        Offset(-60f, -90f), Offset(70f, -80f),
+                    ).forEachIndexed { idx, off ->
+                        val alpha = ((sparkle + idx * 0.2f) % 1f)
+                        drawCircle(Color(0xFFFFD700).copy(alpha = alpha), 5f, centerOffset + off)
+                    }
+                }
                 Text(
-                    "FOUNDATION",
-                    fontSize = 10.sp,
+                    "COMPLETE ✓",
+                    modifier = Modifier.absoluteOffset(
+                        x = with(density) { (centerOffset.x - 60.dp.toPx()).toDp() },
+                        y = with(density) { (centerOffset.y - 180.dp.toPx()).toDp() },
+                    ),
+                    fontSize = 14.sp,
                     fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.W600,
-                    color = Color(0xFF00BCD4).copy(alpha = 0.9f),
+                    fontWeight = FontWeight.W700,
+                    color = Color(0xFF4CAF50),
                 )
             }
         }
     }
+}
+
+private fun DrawScope.drawBlock(
+    x: Float, y: Float, size: Float,
+    topColor: Color, frontColor: Color, sideColor: Color,
+) {
+    val s = size
+    val h = s * 0.5f
+    val top = Path().apply {
+        moveTo(x, y - h); lineTo(x + s, y - h * 0.5f); lineTo(x, y); lineTo(x - s, y - h * 0.5f); close()
+    }
+    val front = Path().apply {
+        moveTo(x - s, y - h * 0.5f); lineTo(x, y); lineTo(x, y + h); lineTo(x - s, y + h * 0.5f); close()
+    }
+    val right = Path().apply {
+        moveTo(x, y); lineTo(x + s, y - h * 0.5f); lineTo(x + s, y + h * 0.5f); lineTo(x, y + h); close()
+    }
+    drawPath(top, topColor)
+    drawPath(front, frontColor)
+    drawPath(right, sideColor)
+    val edge = Color.Black.copy(alpha = 0.3f)
+    val stroke = Stroke(width = 1.5f)
+    drawPath(top, edge, style = stroke)
+    drawPath(front, edge, style = stroke)
+    drawPath(right, edge, style = stroke)
 }
 
 private fun projectAnchorToScreen(
