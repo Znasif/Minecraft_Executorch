@@ -1,6 +1,7 @@
 package com.example.copilotui.ui.screens
 
 import android.graphics.Bitmap
+import android.view.MotionEvent
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
@@ -34,6 +35,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.copilotui.ui.theme.*
 import com.example.copilotui.ui.viewmodel.ConstructionViewModel
+import com.google.ar.core.Anchor
+import com.google.ar.core.Frame
+import com.google.ar.core.Plane
+import com.google.ar.core.Session
 
 @Composable
 fun ARConstructionScreen(
@@ -48,6 +53,9 @@ fun ARConstructionScreen(
     val progress = (stepIndex + 1).toFloat() / totalSteps
 
     var arState by remember { mutableStateOf(ArScanState()) }
+    var arSession by remember { mutableStateOf<Session?>(null) }
+    var arFrame by remember { mutableStateOf<Frame?>(null) }
+    var anchor by remember { mutableStateOf<Anchor?>(null) }
     val dimensions = arState.primaryPlane?.let {
         "${"%.1f".format(it.widthMeters)} m × ${"%.1f".format(it.heightMeters)} m"
     } ?: "3.6 m × 2.4 m"
@@ -57,6 +65,25 @@ fun ARConstructionScreen(
         ArCameraView(
             modifier = Modifier.fillMaxSize(),
             onStateChange = { arState = it },
+            onFrameAvailable = { session, frame ->
+                arSession = session
+                arFrame = frame
+            },
+            onSurfaceReady = { glSurfaceView ->
+                glSurfaceView.setOnTouchListener { _, event ->
+                    if (event.action == MotionEvent.ACTION_DOWN && anchor == null) {
+                        arFrame?.let { frame ->
+                            val hits = frame.hitTest(event.x, event.y)
+                            val hit = hits.firstOrNull {
+                                it.trackable is Plane &&
+                                (it.trackable as Plane).isPoseInPolygon(it.hitPose)
+                            }
+                            hit?.let { anchor = it.createAnchor() }
+                        }
+                    }
+                    true
+                }
+            },
         )
 
         StatusBar(dark = true, modifier = Modifier.align(Alignment.TopStart))
@@ -94,24 +121,43 @@ fun ARConstructionScreen(
             }
         }
 
-        // Step ghost overlay + dimensions label
-        Column(
-            modifier = Modifier.align(Alignment.Center),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            StepGhostOverlay(stepIndex = stepIndex)
-            Text(
-                dimensions,
+        if (anchor == null) {
+            // Tap prompt
+            Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
+                    .align(Alignment.Center)
+                    .clip(RoundedCornerShape(24.dp))
                     .background(Color.Black.copy(0.6f))
-                    .padding(horizontal = 7.dp, vertical = 2.dp),
-                fontSize = 10.sp,
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.W500,
-                color = Color.White,
-            )
+                    .padding(horizontal = 20.dp, vertical = 10.dp),
+            ) {
+                Text(
+                    "👆 Tap floor to place structure",
+                    fontSize = 16.sp,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.W500,
+                    color = Color.White,
+                )
+            }
+        } else {
+            // Step ghost overlay + dimensions label
+            Column(
+                modifier = Modifier.align(Alignment.Center),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                StepGhostOverlay(stepIndex = stepIndex)
+                Text(
+                    dimensions,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color.Black.copy(0.6f))
+                        .padding(horizontal = 7.dp, vertical = 2.dp),
+                    fontSize = 10.sp,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.W500,
+                    color = Color.White,
+                )
+            }
         }
 
         // AI help FAB
