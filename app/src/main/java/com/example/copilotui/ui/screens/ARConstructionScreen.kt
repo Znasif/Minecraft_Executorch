@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
@@ -139,24 +140,40 @@ fun ARConstructionScreen(
                 )
             }
         } else {
-            // Step ghost overlay + dimensions label
-            Column(
-                modifier = Modifier.align(Alignment.Center),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                StepGhostOverlay(stepIndex = stepIndex)
-                Text(
-                    dimensions,
+            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                val currentAnchor = anchor
+                val currentFrame = arFrame
+                val screenW = constraints.maxWidth.toFloat()
+                val screenH = constraints.maxHeight.toFloat()
+                val anchorScreen = if (currentAnchor != null && currentFrame != null) {
+                    projectAnchorToScreen(currentAnchor, currentFrame, screenW, screenH)
+                } else {
+                    Offset(screenW / 2f, screenH / 2f)
+                }
+                StepGhostOverlay(stepIndex = stepIndex, centerOffset = anchorScreen)
+                Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(Color.Black.copy(0.6f))
-                        .padding(horizontal = 7.dp, vertical = 2.dp),
-                    fontSize = 10.sp,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.W500,
-                    color = Color.White,
-                )
+                        .absoluteOffset {
+                            IntOffset(
+                                (anchorScreen.x - 80.dp.toPx()).toInt(),
+                                (anchorScreen.y + 100.dp.toPx()).toInt(),
+                            )
+                        }
+                        .width(160.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        dimensions,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color.Black.copy(0.6f))
+                            .padding(horizontal = 7.dp, vertical = 2.dp),
+                        fontSize = 10.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.W500,
+                        color = Color.White,
+                    )
+                }
             }
         }
 
@@ -260,7 +277,7 @@ fun ARConstructionScreen(
 }
 
 @Composable
-private fun StepGhostOverlay(stepIndex: Int) {
+private fun StepGhostOverlay(stepIndex: Int, centerOffset: Offset) {
     val infiniteTransition = rememberInfiniteTransition(label = "ghost")
     val pulse by infiniteTransition.animateFloat(
         initialValue = 0.5f,
@@ -275,7 +292,14 @@ private fun StepGhostOverlay(stepIndex: Int) {
         label = "stepOverlay",
     ) { step ->
         Box(
-            modifier = Modifier.size(width = 260.dp, height = 180.dp),
+            modifier = Modifier
+                .absoluteOffset {
+                    IntOffset(
+                        (centerOffset.x - 130.dp.toPx()).toInt(),
+                        (centerOffset.y - 90.dp.toPx()).toInt(),
+                    )
+                }
+                .size(width = 260.dp, height = 180.dp),
             contentAlignment = Alignment.Center,
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
@@ -351,4 +375,36 @@ private fun StepGhostOverlay(stepIndex: Int) {
             }
         }
     }
+}
+
+private fun projectAnchorToScreen(
+    anchor: Anchor,
+    frame: Frame,
+    screenWidth: Float,
+    screenHeight: Float,
+): Offset {
+    val projMatrix = FloatArray(16)
+    val viewMatrix = FloatArray(16)
+    frame.camera.getProjectionMatrix(projMatrix, 0, 0.1f, 100f)
+    frame.camera.getViewMatrix(viewMatrix, 0)
+
+    val worldPos = anchor.pose.translation
+    val viewPos = FloatArray(4)
+    val clipSpace = FloatArray(4)
+
+    android.opengl.Matrix.multiplyMV(
+        viewPos, 0, viewMatrix, 0,
+        floatArrayOf(worldPos[0], worldPos[1], worldPos[2], 1f), 0,
+    )
+    android.opengl.Matrix.multiplyMV(
+        clipSpace, 0, projMatrix, 0, viewPos, 0,
+    )
+
+    val ndcX = clipSpace[0] / clipSpace[3]
+    val ndcY = clipSpace[1] / clipSpace[3]
+
+    return Offset(
+        (ndcX + 1f) / 2f * screenWidth,
+        (1f - ndcY) / 2f * screenHeight,
+    )
 }
