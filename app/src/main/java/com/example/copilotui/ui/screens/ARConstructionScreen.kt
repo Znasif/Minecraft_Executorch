@@ -1,5 +1,6 @@
 package com.example.copilotui.ui.screens
 
+import android.graphics.Bitmap
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,18 +21,40 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.copilotui.ui.theme.*
+import com.example.copilotui.ui.viewmodel.ConstructionViewModel
 
 @Composable
-fun ARConstructionScreen(onClose: () -> Unit, onVerify: () -> Unit, onHelp: () -> Unit) {
+fun ARConstructionScreen(
+    viewModel: ConstructionViewModel,
+    onClose: () -> Unit,
+    onVerify: () -> Unit,
+    onHelp: () -> Unit,
+) {
     val arrowAlpha by rememberInfiniteTransition(label = "arrow").animateFloat(
         0.5f, 1f, infiniteRepeatable(tween(1800, easing = LinearEasing), RepeatMode.Reverse), label = "aa"
     )
 
-    Box(modifier = Modifier.fillMaxSize().arHatchBackground()) {
+    val stepIndex = viewModel.currentStepIndex
+    val stepTitle = viewModel.buildSteps.getOrElse(stepIndex) { "Unknown Step" }
+    val totalSteps = viewModel.buildSteps.size
+    val progress = (stepIndex + 1).toFloat() / totalSteps
+
+    var arState by remember { mutableStateOf(ArScanState()) }
+    val dimensions = arState.primaryPlane?.let {
+        "${"%.1f".format(it.widthMeters)} m × ${"%.1f".format(it.heightMeters)} m"
+    } ?: "3.6 m × 2.4 m"
+
+    Box(modifier = Modifier.fillMaxSize()) {
+
+        // Live camera feed replaces hatch background
+        ArCameraView(
+            modifier = Modifier.fillMaxSize(),
+            onStateChange = { arState = it },
+        )
+
         StatusBar(dark = true, modifier = Modifier.align(Alignment.TopStart))
 
         // Step header + close
@@ -49,8 +72,11 @@ fun ARConstructionScreen(onClose: () -> Unit, onVerify: () -> Unit, onHelp: () -
                     .background(Color.Black.copy(0.55f))
                     .padding(horizontal = 13.dp, vertical = 7.dp),
             ) {
-                Text("STEP 7 OF 18", fontSize = 9.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.W500, color = Color(0xFFBFC0BB))
-                Text("Raise North Wall", fontSize = 13.sp, fontWeight = FontWeight.W600, color = Color.White)
+                Text(
+                    "STEP ${stepIndex + 1} OF $totalSteps",
+                    fontSize = 9.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.W500, color = Color(0xFFBFC0BB),
+                )
+                Text(stepTitle, fontSize = 13.sp, fontWeight = FontWeight.W600, color = Color.White)
             }
             Box(
                 modifier = Modifier
@@ -70,7 +96,13 @@ fun ARConstructionScreen(onClose: () -> Unit, onVerify: () -> Unit, onHelp: () -
                 .align(Alignment.Center)
                 .size(width = 150.dp, height = 160.dp)
                 .drawBehind {
-                    drawRect(Color.White.copy(0.85f), style = Stroke(width = 2.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(8f, 5f))))
+                    drawRect(
+                        Color.White.copy(0.85f),
+                        style = Stroke(
+                            width = 2.dp.toPx(),
+                            pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(8f, 5f)),
+                        ),
+                    )
                 },
             contentAlignment = Alignment.Center,
         ) {
@@ -93,7 +125,7 @@ fun ARConstructionScreen(onClose: () -> Unit, onVerify: () -> Unit, onHelp: () -
                 color = Color.White,
             )
             Text(
-                "3.6 m × 2.4 m",
+                dimensions,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .offset(y = 20.dp)
@@ -153,7 +185,7 @@ fun ARConstructionScreen(onClose: () -> Unit, onVerify: () -> Unit, onHelp: () -
                 .padding(start = 16.dp, end = 16.dp, top = 13.dp, bottom = 18.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // Progress bar
+            // Progress bar driven by currentStepIndex
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -163,7 +195,7 @@ fun ARConstructionScreen(onClose: () -> Unit, onVerify: () -> Unit, onHelp: () -
             ) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(0.58f)
+                        .fillMaxWidth(progress)
                         .fillMaxHeight()
                         .background(Color.White)
                 )
@@ -176,7 +208,11 @@ fun ARConstructionScreen(onClose: () -> Unit, onVerify: () -> Unit, onHelp: () -
                         .weight(1.6f)
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color.White)
-                        .clickable(onClick = onVerify)
+                        .clickable {
+                            val bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
+                            viewModel.verifyCurrentStep(bitmap)
+                            onVerify()
+                        }
                         .padding(13.dp),
                     contentAlignment = Alignment.Center,
                 ) {

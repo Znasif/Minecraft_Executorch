@@ -20,10 +20,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.copilotui.ui.theme.*
+import com.example.copilotui.ui.viewmodel.ConstructionViewModel
 
 @Composable
 fun CompletionScreen(onShare: () -> Unit, onNewProject: () -> Unit) {
+    val vm: ConstructionViewModel = viewModel()
+
+    val totalSteps = vm.buildSteps.size
+    val stats = listOf(
+        Pair("$totalSteps / $totalSteps", "STEPS"),
+        Pair("${vm.totalVerifications}", "AI VERIF."),
+        Pair("${vm.avgInferenceMs}ms", "AVG INFER."),
+        Pair("0", "CLOUD CALLS"),
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -68,6 +80,14 @@ fun CompletionScreen(onShare: () -> Unit, onNewProject: () -> Unit) {
                 color = TextDarkSecondary,
                 modifier = Modifier.padding(top = 6.dp),
             )
+            Text(
+                "⚡ Powered by Hexagon NPU",
+                fontSize = 10.sp,
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.W500,
+                color = Color(0xFF00BCD4),
+                modifier = Modifier.padding(top = 4.dp),
+            )
 
             // Stats
             Row(
@@ -76,21 +96,17 @@ fun CompletionScreen(onShare: () -> Unit, onNewProject: () -> Unit) {
                     .fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(9.dp),
             ) {
-                listOf(
-                    Triple("14d", "TIME SPENT", Modifier.weight(1f)),
-                    Triple("96%", "ACCURACY", Modifier.weight(1f)),
-                    Triple("38", "MATERIALS", Modifier.weight(1f)),
-                ).forEach { (value, label, mod) ->
+                stats.forEach { (value, label) ->
                     Column(
-                        modifier = mod
+                        modifier = Modifier.weight(1f)
                             .clip(RoundedCornerShape(11.dp))
                             .background(DarkCard)
                             .border(1.dp, DarkCardBorder, RoundedCornerShape(11.dp))
                             .padding(11.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        Text(value, fontSize = 17.sp, fontWeight = FontWeight.W700, color = TextDark)
-                        Text(label, fontSize = 8.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.W500, color = TextDarkSecondary, modifier = Modifier.padding(top = 2.dp))
+                        Text(value, fontSize = 15.sp, fontWeight = FontWeight.W700, color = TextDark, textAlign = TextAlign.Center)
+                        Text(label, fontSize = 7.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.W500, color = TextDarkSecondary, modifier = Modifier.padding(top = 2.dp), textAlign = TextAlign.Center)
                     }
                 }
             }

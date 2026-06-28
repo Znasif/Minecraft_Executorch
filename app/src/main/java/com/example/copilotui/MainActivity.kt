@@ -5,12 +5,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.copilotui.navigation.Routes
 import com.example.copilotui.ui.screens.*
 import com.example.copilotui.ui.theme.CopilotTheme
+import com.example.copilotui.ui.viewmodel.ConstructionViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -27,6 +29,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AppNavHost() {
     val navController = rememberNavController()
+    val constructionViewModel: ConstructionViewModel = viewModel()
+
     NavHost(navController = navController, startDestination = Routes.SPLASH) {
         composable(Routes.SPLASH) {
             SplashScreen(onDone = {
@@ -55,6 +59,7 @@ fun AppNavHost() {
         }
         composable(Routes.AR_CONSTRUCTION) {
             ARConstructionScreen(
+                viewModel = constructionViewModel,
                 onClose = { navController.popBackStack() },
                 onVerify = { navController.navigate(Routes.VERIFICATION) },
                 onHelp = {},
@@ -62,6 +67,7 @@ fun AppNavHost() {
         }
         composable(Routes.VERIFICATION) {
             VerificationScreen(
+                viewModel = constructionViewModel,
                 onBack = { navController.popBackStack() },
                 onFix = { navController.popBackStack() },
                 onProceed = { navController.navigate(Routes.COMPLETION) },

@@ -57,6 +57,14 @@ dependencies {
     implementation(libs.camerax.camera2)
     implementation(libs.camerax.lifecycle)
     implementation(libs.camerax.view)
+    implementation(libs.lifecycle.viewmodel.compose)
+    implementation(libs.lifecycle.viewmodel.ktx)
+
+    // ExecuTorch AAR — file will be placed in app/libs/ by teammate
+    // Uncomment when executorch.aar is available
+    // implementation(files("libs/executorch.aar"))
+    // implementation("com.facebook.soloader:soloader:0.10.5")
+    // implementation("com.facebook.fbjni:fbjni:0.7.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
