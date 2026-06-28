@@ -22,6 +22,7 @@ import com.example.copilotui.ar.samplerender.arcore.BackgroundRenderer
 import com.example.copilotui.ar.samplerender.arcore.PlaneRenderer
 import com.google.ar.core.ArCoreApk
 import com.google.ar.core.Config
+import com.google.ar.core.Frame
 import com.google.ar.core.Plane
 import com.google.ar.core.Session
 import com.google.ar.core.TrackingState
@@ -37,6 +38,8 @@ private const val Z_FAR = 100f
 fun ArCameraView(
     modifier: Modifier = Modifier,
     onStateChange: (ArScanState) -> Unit,
+    onFrameAvailable: (session: Session, frame: Frame) -> Unit = { _, _ -> },
+    onSurfaceReady: (GLSurfaceView) -> Unit = {},
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -52,7 +55,7 @@ fun ArCameraView(
         }
     }
     val renderer = remember(sessionHelper) {
-        sessionHelper?.let { ArPlaneRenderer(context, it, onStateChange) }
+        sessionHelper?.let { ArPlaneRenderer(context, it, onStateChange, onFrameAvailable) }
     }
     val glSurfaceView = remember { GLSurfaceView(context) }
 
@@ -81,6 +84,7 @@ fun ArCameraView(
         factory = {
             glSurfaceView.also { surfaceView ->
                 renderer?.let { SampleRender(surfaceView, it, context.assets) }
+                onSurfaceReady(surfaceView)
             }
         },
     )
@@ -101,6 +105,7 @@ private class ArPlaneRenderer(
     context: Context,
     private val sessionHelper: ARCoreSessionLifecycleHelper,
     private val onStateChange: (ArScanState) -> Unit,
+    private val onFrameAvailable: (Session, Frame) -> Unit,
 ) : SampleRender.Renderer, DefaultLifecycleObserver {
     private val displayRotationHelper = DisplayRotationHelper(context)
     private lateinit var backgroundRenderer: BackgroundRenderer
@@ -153,6 +158,7 @@ private class ArPlaneRenderer(
             Log.e(TAG, "Frame error: ${e.message}")
             return
         }
+        onFrameAvailable(session, frame)
         val camera = frame.camera
 
         backgroundRenderer.updateDisplayGeometry(frame)
