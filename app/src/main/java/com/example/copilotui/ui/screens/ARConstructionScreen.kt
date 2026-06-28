@@ -291,7 +291,7 @@ private fun MinecraftAROverlay(stepIndex: Int, centerOffset: Offset) {
     val ijFront = listOf(0 to 0, 1 to 0, 0 to 1, 2 to 0, 1 to 1, 2 to 1)
 
     val pillarProgress by animateFloatAsState(
-        targetValue = if (stepIndex >= 1) 3f else 0f,
+        targetValue = if (stepIndex >= 0) 3f else 0f,
         animationSpec = tween(600),
         label = "pillar",
     )
@@ -312,7 +312,7 @@ private fun MinecraftAROverlay(stepIndex: Int, centerOffset: Offset) {
         }
 
         // Layer 2 — Corner posts, rise up
-        AnimatedVisibility(visible = stepIndex >= 1, enter = fadeIn(tween(400))) {
+        AnimatedVisibility(visible = stepIndex >= 0, enter = fadeIn(tween(400))) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val maxK = pillarProgress.toInt().coerceIn(0, 3)
                 for ((ci, cj) in listOf(0 to 0, 2 to 0, 0 to 1, 2 to 1)) {
@@ -325,7 +325,7 @@ private fun MinecraftAROverlay(stepIndex: Int, centerOffset: Offset) {
         }
 
         // Layer 3 — Walls
-        AnimatedVisibility(visible = stepIndex >= 2, enter = fadeIn(tween(400))) {
+        AnimatedVisibility(visible = stepIndex >= 1, enter = fadeIn(tween(400))) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 for (k in 1..2) {
                     val p = pos(1, 1, k)
@@ -336,7 +336,7 @@ private fun MinecraftAROverlay(stepIndex: Int, centerOffset: Offset) {
 
         // Layer 4 — Roof, drops in
         AnimatedVisibility(
-            visible = stepIndex >= 3,
+            visible = stepIndex >= 2,
             enter = fadeIn(tween(400)) + slideInVertically(
                 initialOffsetY = { -it / 3 },
                 animationSpec = tween(600),
@@ -351,7 +351,7 @@ private fun MinecraftAROverlay(stepIndex: Int, centerOffset: Offset) {
         }
 
         // Layer 5 — Complete details
-        AnimatedVisibility(visible = stepIndex >= 4, enter = fadeIn(tween(400))) {
+        AnimatedVisibility(visible = stepIndex >= 3, enter = fadeIn(tween(400))) {
             Box(modifier = Modifier.fillMaxSize()) {
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val dp = pos(1, 0, 0)

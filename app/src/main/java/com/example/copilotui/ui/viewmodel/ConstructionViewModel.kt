@@ -15,7 +15,6 @@ import kotlinx.coroutines.launch
 class ConstructionViewModel(app: Application) : AndroidViewModel(app) {
 
     val buildSteps = listOf(
-        "Mark Foundation",
         "Place Corner Posts",
         "Raise Walls",
         "Install Roof Frame",
