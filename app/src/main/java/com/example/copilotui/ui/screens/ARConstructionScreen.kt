@@ -278,16 +278,20 @@ fun ARConstructionScreen(
 @Composable
 private fun MinecraftAROverlay(stepIndex: Int, centerOffset: Offset) {
     val density = LocalDensity.current
-    val bs = with(density) { 48.dp.toPx() }
-    val bh = bs * 0.5f
-    val gx = centerOffset.x - 0.5f * bs
-    val gy = centerOffset.y - 1.5f * bh * 0.5f
+    val bs   = with(density) { 56.dp.toPx() }
+    val isoW = bs
+    val isoH = bs * 0.5f
+    val wallH = bs * 0.8f
+    // Center the 3x2 footprint (avg col=1, avg row=0.5) at centerOffset
+    val cx = centerOffset.x - 0.5f * isoW
+    val cy = centerOffset.y - 1.5f * isoH
 
-    fun pos(i: Int, j: Int, k: Int = 0) = Offset(
-        gx + (i - j) * bs,
-        gy + (i + j) * bh * 0.5f - k * bh,
+    fun blockPos(col: Int, row: Int, layer: Int = 0) = Offset(
+        cx + (col - row) * isoW,
+        cy + (col + row) * isoH - layer * wallH,
     )
 
+    // Painter order: ascending (col+row) so back blocks draw first
     val ijFront = listOf(0 to 0, 1 to 0, 0 to 1, 2 to 0, 1 to 1, 2 to 1)
 
     val pillarProgress by animateFloatAsState(
@@ -305,36 +309,36 @@ private fun MinecraftAROverlay(stepIndex: Int, centerOffset: Offset) {
 
         // Layer 1 — Foundation, always visible
         Canvas(modifier = Modifier.fillMaxSize()) {
-            for ((i, j) in ijFront) {
-                val p = pos(i, j)
-                drawBlock(p.x, p.y, bs, Color(0xFFC8C8C8), Color(0xFF888888), Color(0xFF707070))
+            for ((col, row) in ijFront) {
+                val p = blockPos(col, row, 0)
+                drawBlock(p.x, p.y, bs, isoH, wallH, Color(0xFFC8C8C8), Color(0xFF888888), Color(0xFF707070))
             }
         }
 
-        // Layer 2 — Corner posts, rise up
+        // Layer 2 — Corner posts, rise up one block at a time
         AnimatedVisibility(visible = stepIndex >= 0, enter = fadeIn(tween(400))) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val maxK = pillarProgress.toInt().coerceIn(0, 3)
                 for ((ci, cj) in listOf(0 to 0, 2 to 0, 0 to 1, 2 to 1)) {
                     for (k in 1..maxK) {
-                        val p = pos(ci, cj, k)
-                        drawBlock(p.x, p.y, bs, Color(0xFFB8924A), Color(0xFF8B6914), Color(0xFF6B4F10))
+                        val p = blockPos(ci, cj, k)
+                        drawBlock(p.x, p.y, bs, isoH, wallH, Color(0xFFB8924A), Color(0xFF8B6914), Color(0xFF6B4F10))
                     }
                 }
             }
         }
 
-        // Layer 3 — Walls
+        // Layer 3 — Walls: back-middle only (front is the doorway)
         AnimatedVisibility(visible = stepIndex >= 1, enter = fadeIn(tween(400))) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 for (k in 1..2) {
-                    val p = pos(1, 1, k)
-                    drawBlock(p.x, p.y, bs, Color(0xFFAAAAAA), Color(0xFF777777), Color(0xFF606060))
+                    val p = blockPos(1, 1, k)
+                    drawBlock(p.x, p.y, bs, isoH, wallH, Color(0xFFAAAAAA), Color(0xFF777777), Color(0xFF606060))
                 }
             }
         }
 
-        // Layer 4 — Roof, drops in
+        // Layer 4 — Roof, drops in from above
         AnimatedVisibility(
             visible = stepIndex >= 2,
             enter = fadeIn(tween(400)) + slideInVertically(
@@ -343,27 +347,27 @@ private fun MinecraftAROverlay(stepIndex: Int, centerOffset: Offset) {
             ),
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
-                for ((i, j) in ijFront) {
-                    val p = pos(i, j, 3)
-                    drawBlock(p.x, p.y, bs, Color(0xFF6B4F10), Color(0xFF4A3520), Color(0xFF3A2510))
+                for ((col, row) in ijFront) {
+                    val p = blockPos(col, row, 3)
+                    drawBlock(p.x, p.y, bs, isoH, wallH, Color(0xFF6B4F10), Color(0xFF4A3520), Color(0xFF3A2510))
                 }
             }
         }
 
-        // Layer 5 — Complete details
+        // Layer 5 — Door, windows, sparkles, label
         AnimatedVisibility(visible = stepIndex >= 3, enter = fadeIn(tween(400))) {
             Box(modifier = Modifier.fillMaxSize()) {
                 Canvas(modifier = Modifier.fillMaxSize()) {
-                    val dp = pos(1, 0, 0)
-                    val dw = bs * 0.55f; val dh = bh * 1.4f
+                    val dp = blockPos(1, 0, 0)
+                    val dw = bs * 0.55f; val dh = wallH * 1.4f
                     drawRect(Color(0xFF3E2010),
                         topLeft = Offset(dp.x - dw * 0.5f, dp.y - dh),
                         size = Size(dw, dh))
                     for (k in 1..2) {
-                        val wp = pos(1, 1, k)
+                        val wp = blockPos(1, 1, k)
                         drawRect(Color(0xFF87CEEB).copy(alpha = 0.8f),
-                            topLeft = Offset(wp.x - bs * 0.28f, wp.y - bh * 0.55f),
-                            size = Size(bs * 0.45f, bh * 0.4f))
+                            topLeft = Offset(wp.x - bs * 0.28f, wp.y - wallH * 0.55f),
+                            size = Size(bs * 0.45f, wallH * 0.4f))
                     }
                     listOf(
                         Offset(-80f, -130f), Offset(90f, -110f), Offset(0f, -170f),
@@ -391,18 +395,31 @@ private fun MinecraftAROverlay(stepIndex: Int, centerOffset: Offset) {
 
 private fun DrawScope.drawBlock(
     x: Float, y: Float, size: Float,
+    isoH: Float, wallH: Float,
     topColor: Color, frontColor: Color, sideColor: Color,
 ) {
     val s = size
-    val h = s * 0.5f
+    // x,y = front-top vertex (where top face meets front/right face tops)
     val top = Path().apply {
-        moveTo(x, y - h); lineTo(x + s, y - h * 0.5f); lineTo(x, y); lineTo(x - s, y - h * 0.5f); close()
+        moveTo(x, y - isoH)
+        lineTo(x + s, y - isoH * 0.5f)
+        lineTo(x, y)
+        lineTo(x - s, y - isoH * 0.5f)
+        close()
     }
     val front = Path().apply {
-        moveTo(x - s, y - h * 0.5f); lineTo(x, y); lineTo(x, y + h); lineTo(x - s, y + h * 0.5f); close()
+        moveTo(x - s, y - isoH * 0.5f)
+        lineTo(x, y)
+        lineTo(x, y + wallH)
+        lineTo(x - s, y + wallH - isoH * 0.5f)
+        close()
     }
     val right = Path().apply {
-        moveTo(x, y); lineTo(x + s, y - h * 0.5f); lineTo(x + s, y + h * 0.5f); lineTo(x, y + h); close()
+        moveTo(x, y)
+        lineTo(x + s, y - isoH * 0.5f)
+        lineTo(x + s, y + wallH - isoH * 0.5f)
+        lineTo(x, y + wallH)
+        close()
     }
     drawPath(top, topColor)
     drawPath(front, frontColor)
