@@ -1,17 +1,18 @@
 package com.example.copilotui.ui.viewmodel
 
+import android.app.Application
 import android.graphics.Bitmap
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.copilotui.verification.MockVlmEngine
+import com.example.copilotui.verification.VlmEngine
 import com.example.copilotui.verification.VlmResult
 import kotlinx.coroutines.launch
 
-class ConstructionViewModel : ViewModel() {
+class ConstructionViewModel(app: Application) : AndroidViewModel(app) {
 
     val buildSteps = listOf(
         "Mark Foundation",
@@ -24,7 +25,7 @@ class ConstructionViewModel : ViewModel() {
     var currentStepIndex by mutableIntStateOf(0)
         private set
 
-    private val vlmEngine = MockVlmEngine()
+    private val vlmEngine = VlmEngine(app)
 
     private var verificationCount = 0
     private val inferenceTimes = mutableListOf<Long>()
@@ -43,6 +44,10 @@ class ConstructionViewModel : ViewModel() {
 
     var verificationError by mutableStateOf<String?>(null)
         private set
+
+    init {
+        viewModelScope.launch { vlmEngine.load() }
+    }
 
     fun verifyCurrentStep(bitmap: Bitmap) {
         viewModelScope.launch {
@@ -69,5 +74,10 @@ class ConstructionViewModel : ViewModel() {
             currentStepIndex++
             lastVerificationResult = null
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        vlmEngine.close()
     }
 }

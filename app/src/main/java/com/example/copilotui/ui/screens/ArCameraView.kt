@@ -26,6 +26,7 @@ import com.google.ar.core.Plane
 import com.google.ar.core.Session
 import com.google.ar.core.TrackingState
 import com.google.ar.core.exceptions.CameraNotAvailableException
+import com.google.ar.core.exceptions.SessionPausedException
 import java.io.IOException
 
 private const val TAG = "ArCameraView"
@@ -53,6 +54,14 @@ fun ArCameraView(
     val renderer = remember(sessionHelper) {
         sessionHelper?.let { ArPlaneRenderer(context, it, onStateChange) }
     }
+    val glSurfaceView = remember { GLSurfaceView(context) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            glSurfaceView.onPause()
+            sessionHelper?.session?.pause()
+        }
+    }
 
     DisposableEffect(lifecycleOwner, sessionHelper, renderer) {
         if (sessionHelper != null && renderer != null) {
@@ -69,9 +78,9 @@ fun ArCameraView(
 
     AndroidView(
         modifier = modifier,
-        factory = { ctx ->
-            GLSurfaceView(ctx).also { surfaceView ->
-                renderer?.let { SampleRender(surfaceView, it, ctx.assets) }
+        factory = {
+            glSurfaceView.also { surfaceView ->
+                renderer?.let { SampleRender(surfaceView, it, context.assets) }
             }
         },
     )
@@ -135,8 +144,13 @@ private class ArPlaneRenderer(
 
         val frame = try {
             session.update()
+        } catch (e: SessionPausedException) {
+            return
         } catch (e: CameraNotAvailableException) {
             Log.e(TAG, "Camera not available during AR frame", e)
+            return
+        } catch (e: Exception) {
+            Log.e(TAG, "Frame error: ${e.message}")
             return
         }
         val camera = frame.camera
