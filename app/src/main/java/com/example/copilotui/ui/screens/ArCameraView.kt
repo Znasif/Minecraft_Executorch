@@ -26,6 +26,7 @@ import com.google.ar.core.Plane
 import com.google.ar.core.Session
 import com.google.ar.core.TrackingState
 import com.google.ar.core.exceptions.CameraNotAvailableException
+import com.google.ar.core.exceptions.SessionPausedException
 import java.io.IOException
 
 private const val TAG = "ArCameraView"
@@ -137,6 +138,8 @@ private class ArPlaneRenderer(
             session.update()
         } catch (e: CameraNotAvailableException) {
             Log.e(TAG, "Camera not available during AR frame", e)
+            return
+        } catch (e: SessionPausedException) {
             return
         }
         val camera = frame.camera

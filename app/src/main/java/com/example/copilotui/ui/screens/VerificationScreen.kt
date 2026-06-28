@@ -256,7 +256,9 @@ fun VerificationScreen(
         }
 
         Column(
-            modifier = Modifier.padding(16.dp, 10.dp, 16.dp, 18.dp),
+            modifier = Modifier
+                .navigationBarsPadding()
+                .padding(16.dp, 10.dp, 16.dp, 18.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Box(

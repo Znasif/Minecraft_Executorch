@@ -148,6 +148,7 @@ fun SplashScreen(onDone: () -> Unit) {
             "POWERED BY QUALCOMM AI",
             modifier = Modifier
                 .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
                 .padding(bottom = 26.dp),
             fontSize = 10.sp,
             fontFamily = FontFamily.Monospace,

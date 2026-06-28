@@ -4,6 +4,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -70,17 +73,20 @@ fun NavBar(
     onSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(58.dp)
-            .padding(horizontal = 8.dp),
-        horizontalArrangement = Arrangement.SpaceAround,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        NavBarItem(Icons.Rounded.Apps, "Projects", selected == 0, onProjects)
-        NavBarItem(Icons.Rounded.CropFree, "Scanner", selected == 1, onScanner)
-        NavBarItem(Icons.Rounded.Tune, "Settings", selected == 2, onSettings)
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(58.dp)
+                .padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            NavBarItem(Icons.Rounded.Apps, "Projects", selected == 0, onProjects)
+            NavBarItem(Icons.Rounded.CropFree, "Scanner", selected == 1, onScanner)
+            NavBarItem(Icons.Rounded.Tune, "Settings", selected == 2, onSettings)
+        }
+        Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
     }
 }
 

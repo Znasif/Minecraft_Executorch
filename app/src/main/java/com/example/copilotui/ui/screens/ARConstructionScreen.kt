@@ -182,6 +182,7 @@ fun ARConstructionScreen(
                 .fillMaxWidth()
                 .background(Color(0xFF101114).copy(0.92f))
                 .border(width = 1.dp, color = Color.White.copy(0.08f), shape = RoundedCornerShape(0.dp))
+                .navigationBarsPadding()
                 .padding(start = 16.dp, end = 16.dp, top = 13.dp, bottom = 18.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {

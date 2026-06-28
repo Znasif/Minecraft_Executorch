@@ -132,6 +132,7 @@ fun EnvironmentScanScreen(onFinish: () -> Unit) {
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
+                .navigationBarsPadding()
                 .padding(16.dp, 0.dp, 16.dp, 20.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
