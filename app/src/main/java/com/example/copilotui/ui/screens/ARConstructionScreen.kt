@@ -295,75 +295,93 @@ private fun StepGhostOverlay(stepIndex: Int, centerOffset: Offset) {
             modifier = Modifier
                 .absoluteOffset {
                     IntOffset(
-                        (centerOffset.x - 130.dp.toPx()).toInt(),
+                        (centerOffset.x - 170.dp.toPx()).toInt(),
                         (centerOffset.y - 90.dp.toPx()).toInt(),
                     )
                 }
-                .size(width = 260.dp, height = 180.dp),
+                .size(width = 340.dp, height = 180.dp),
             contentAlignment = Alignment.Center,
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val teal = Color(0xFF00BCD4)
                 val orange = Color(0xFFFF6B35)
                 val green = Color(0xFF4CAF50)
-                val w = size.width
-                val h = size.height
+                val cx = size.width / 2f
+                val cy = size.height / 2f
+                val sw = 260.dp.toPx()
+                val sh = 80.dp.toPx()
+                val sk = 40.dp.toPx()
+                val wallLift = 45.dp.toPx()
+                val dash = PathEffect.dashPathEffect(floatArrayOf(12f, 8f))
+
+                // Isometric parallelogram: flat slab centered at (cx, cy), shifted up by yOff
+                fun slabPath(yOff: Float = 0f) = Path().apply {
+                    moveTo(cx - sw / 2 + sk, cy - sh / 2 + yOff)
+                    lineTo(cx + sw / 2 + sk, cy - sh / 2 + yOff)
+                    lineTo(cx + sw / 2 - sk, cy + sh / 2 + yOff)
+                    lineTo(cx - sw / 2 - sk, cy + sh / 2 + yOff)
+                    close()
+                }
+
+                // Parallelogram corner points at a given y-offset
+                fun corners(yOff: Float = 0f) = listOf(
+                    Offset(cx - sw / 2 + sk, cy - sh / 2 + yOff),
+                    Offset(cx + sw / 2 + sk, cy - sh / 2 + yOff),
+                    Offset(cx + sw / 2 - sk, cy + sh / 2 + yOff),
+                    Offset(cx - sw / 2 - sk, cy + sh / 2 + yOff),
+                )
 
                 when (step) {
                     0 -> { // Mark Foundation
-                        drawRect(teal.copy(alpha = 0.08f))
-                        drawRect(
-                            color = teal.copy(alpha = 0.6f),
-                            style = Stroke(width = 2.5.dp.toPx()),
-                        )
+                        drawPath(slabPath(), teal.copy(alpha = 0.15f))
+                        drawPath(slabPath(), teal.copy(alpha = 0.7f),
+                            style = Stroke(width = 2.dp.toPx()))
                     }
                     1 -> { // Place Corner Posts
-                        val r = 12.dp.toPx()
-                        listOf(
-                            Offset(r, r), Offset(w - r, r),
-                            Offset(r, h - r), Offset(w - r, h - r),
-                        ).forEach { center ->
-                            drawCircle(teal.copy(alpha = pulse), radius = r, center = center)
+                        drawPath(slabPath(), teal.copy(alpha = 0.10f))
+                        drawPath(slabPath(), teal.copy(alpha = 0.5f),
+                            style = Stroke(width = 1.5.dp.toPx()))
+                        corners().forEach { pt ->
+                            drawCircle(teal.copy(alpha = pulse), radius = 10.dp.toPx(), center = pt)
                         }
                     }
                     2 -> { // Raise Walls
-                        val r = 12.dp.toPx()
-                        val dash = PathEffect.dashPathEffect(floatArrayOf(12f, 8f))
-                        listOf(
-                            Offset(r, r) to Offset(w - r, r),
-                            Offset(w - r, r) to Offset(w - r, h - r),
-                            Offset(w - r, h - r) to Offset(r, h - r),
-                            Offset(r, h - r) to Offset(r, r),
-                        ).forEach { (a, b) ->
-                            drawLine(teal.copy(0.85f), a, b, strokeWidth = 2.5.dp.toPx(), pathEffect = dash)
+                        drawPath(slabPath(), teal.copy(alpha = 0.10f))
+                        drawPath(slabPath(), teal.copy(alpha = 0.4f),
+                            style = Stroke(width = 1.5.dp.toPx()))
+                        drawPath(slabPath(-wallLift), teal.copy(alpha = 0.7f),
+                            style = Stroke(width = 2.dp.toPx(), pathEffect = dash))
+                        corners().zip(corners(-wallLift)).forEach { (base, top) ->
+                            drawLine(teal.copy(0.5f), base, top,
+                                strokeWidth = 1.5.dp.toPx(), pathEffect = dash)
                         }
                     }
                     3 -> { // Install Roof Frame
-                        val dash = PathEffect.dashPathEffect(floatArrayOf(12f, 8f))
-                        drawLine(orange.copy(0.85f), Offset(0f, 0f), Offset(w, h), strokeWidth = 2.5.dp.toPx(), pathEffect = dash)
-                        drawLine(orange.copy(0.85f), Offset(w, 0f), Offset(0f, h), strokeWidth = 2.5.dp.toPx(), pathEffect = dash)
+                        drawPath(slabPath(), teal.copy(alpha = 0.08f))
+                        drawPath(slabPath(-wallLift), teal.copy(alpha = 0.3f),
+                            style = Stroke(width = 1.dp.toPx()))
+                        val roofCorners = corners(-wallLift)
+                        drawLine(orange.copy(0.85f), roofCorners[0], roofCorners[2],
+                            strokeWidth = 2.5.dp.toPx(), pathEffect = dash)
+                        drawLine(orange.copy(0.85f), roofCorners[1], roofCorners[3],
+                            strokeWidth = 2.5.dp.toPx(), pathEffect = dash)
                     }
                     4 -> { // Secure & Finish
-                        drawRect(green.copy(alpha = 0.15f))
+                        drawPath(slabPath(), green.copy(alpha = 0.15f))
+                        drawPath(slabPath(), green.copy(alpha = 0.7f),
+                            style = Stroke(width = 2.dp.toPx()))
                         val checkPath = Path().apply {
-                            moveTo(w * 0.27f, h * 0.50f)
-                            lineTo(w * 0.43f, h * 0.67f)
-                            lineTo(w * 0.73f, h * 0.34f)
+                            moveTo(cx - 30.dp.toPx(), cy)
+                            lineTo(cx - 5.dp.toPx(), cy + 20.dp.toPx())
+                            lineTo(cx + 30.dp.toPx(), cy - 20.dp.toPx())
                         }
-                        drawPath(
-                            checkPath,
-                            green.copy(alpha = 0.9f),
-                            style = Stroke(
-                                width = 4.dp.toPx(),
-                                cap = StrokeCap.Round,
-                                join = StrokeJoin.Round,
-                            ),
-                        )
+                        drawPath(checkPath, green.copy(alpha = 0.9f),
+                            style = Stroke(width = 4.dp.toPx(),
+                                cap = StrokeCap.Round, join = StrokeJoin.Round))
                     }
                 }
             }
 
-            // Text label for step 1
             if (step == 0) {
                 Text(
                     "FOUNDATION",
