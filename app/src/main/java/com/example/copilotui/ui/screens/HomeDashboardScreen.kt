@@ -1,6 +1,5 @@
 package com.example.copilotui.ui.screens
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -14,9 +13,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -31,8 +30,6 @@ fun HomeDashboardScreen(
     onScanner: () -> Unit,
     onSettings: () -> Unit,
 ) {
-    val context = LocalContext.current
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -57,11 +54,17 @@ fun HomeDashboardScreen(
                     color = TextSecondary,
                 )
                 Text(
-                    "Let's build.",
-                    fontSize = 22.sp,
+                    "Good morning, Builder",
+                    fontSize = 28.sp,
                     fontWeight = FontWeight.W700,
                     color = TextPrimary,
-                    letterSpacing = (-0.4).sp,
+                    letterSpacing = (-0.5).sp,
+                )
+                Text(
+                    "What will you build today?",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.W400,
+                    color = TextSecondary,
                 )
             }
             Box(
@@ -75,43 +78,32 @@ fun HomeDashboardScreen(
             }
         }
 
-        // 2×2 grid
+        // Cards
         Column(
             modifier = Modifier
                 .weight(1f)
                 .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(11.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(11.dp), modifier = Modifier.fillMaxWidth()) {
-                HomeCard(
-                    icon = Icons.Rounded.Add,
-                    label = "Start New\nProject",
-                    dark = true,
-                    modifier = Modifier.weight(1f),
-                    onClick = onNewProject,
-                )
-                HomeCard(
-                    icon = Icons.Rounded.PlayArrow,
-                    label = "Continue\nProject",
-                    dark = false,
-                    modifier = Modifier.weight(1f),
-                    onClick = onContinue,
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(11.dp), modifier = Modifier.fillMaxWidth()) {
-                HomeCard(
-                    icon = Icons.Rounded.Description,
-                    label = "Load\nBlueprint",
-                    dark = false,
-                    modifier = Modifier.weight(1f),
-                    onClick = { Toast.makeText(context, "Coming Soon", Toast.LENGTH_SHORT).show() },
-                )
+            HeroCard(onClick = onNewProject)
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
                 HomeCard(
                     icon = Icons.Rounded.PlayCircle,
-                    label = "Demo\nMode",
-                    dark = false,
+                    title = "Demo Mode",
+                    subtitle = "Try a sample build",
                     modifier = Modifier.weight(1f),
                     onClick = onDemo,
+                )
+                HomeCard(
+                    icon = Icons.Rounded.Settings,
+                    title = "Settings",
+                    subtitle = "Configure app",
+                    modifier = Modifier.weight(1f),
+                    onClick = onSettings,
                 )
             }
         }
@@ -122,40 +114,77 @@ fun HomeDashboardScreen(
                 .height(1.dp)
                 .background(LightCardBorder)
         )
-        NavBar(
+        HomeNavBar(
             selected = 0,
             onProjects = {},
             onScanner = onScanner,
             onSettings = onSettings,
-            modifier = Modifier.background(LightSurface),
         )
+    }
+}
+
+@Composable
+private fun HeroCard(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(180.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(Color(0xFF006064), Color(0xFF00838F)),
+                )
+            )
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color.White.copy(alpha = 0.18f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Rounded.Add, null, tint = Color.White, modifier = Modifier.size(44.dp))
+            }
+            Spacer(Modifier.height(14.dp))
+            Text(
+                "Start New Project",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.W700,
+                color = Color.White,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Point your phone at any flat surface",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.W400,
+                color = Color.White.copy(alpha = 0.80f),
+            )
+        }
     }
 }
 
 @Composable
 private fun HomeCard(
     icon: ImageVector,
-    label: String,
-    dark: Boolean,
+    title: String,
+    subtitle: String,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val bg = if (dark) CtaDark else LightCard
-    val iconBg = if (dark) Color.White.copy(alpha = 0.14f) else Color(0xFFF0F0EC)
-    val iconTint = if (dark) Color.White else Color(0xFF33332F)
-    val textColor = if (dark) Color.White else TextPrimary
-
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(bg)
-            .then(
-                if (!dark) Modifier.border(1.5.dp, LightCardBorder, RoundedCornerShape(16.dp))
-                else Modifier
-            )
+            .defaultMinSize(minHeight = 140.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(LightCard)
+            .border(1.5.dp, LightCardBorder, RoundedCornerShape(20.dp))
             .clickable(onClick = onClick)
-            .padding(14.dp)
-            .defaultMinSize(minHeight = 106.dp),
+            .padding(24.dp),
     ) {
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -163,21 +192,80 @@ private fun HomeCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(30.dp)
-                    .clip(RoundedCornerShape(9.dp))
-                    .background(iconBg),
+                    .size(72.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color(0xFFF0F0EC)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(icon, null, tint = iconTint, modifier = Modifier.size(18.dp))
+                Icon(icon, null, tint = Color(0xFF33332F), modifier = Modifier.size(36.dp))
             }
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(16.dp))
             Text(
-                label,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.W600,
-                color = textColor,
-                lineHeight = 18.sp,
+                title,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.W700,
+                color = TextPrimary,
             )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                subtitle,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.W400,
+                color = TextSecondary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun HomeNavBar(
+    selected: Int,
+    onProjects: () -> Unit,
+    onScanner: () -> Unit,
+    onSettings: () -> Unit,
+) {
+    val teal = Color(0xFF00838F)
+    val inactive = Color(0xFF888884)
+
+    val tabs = listOf(
+        Triple(Icons.Rounded.Folder, "Projects", onProjects),
+        Triple(Icons.Rounded.CameraAlt, "Scanner", onScanner),
+        Triple(Icons.Rounded.Settings, "Settings", onSettings),
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(72.dp)
+            .background(LightSurface)
+            .padding(horizontal = 8.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        tabs.forEachIndexed { index, (icon, label, action) ->
+            val isActive = index == selected
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .clickable(onClick = action),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = label,
+                    tint = if (isActive) teal else inactive,
+                    modifier = Modifier.size(28.dp),
+                )
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    label,
+                    fontSize = 11.sp,
+                    fontWeight = if (isActive) FontWeight.W600 else FontWeight.W400,
+                    color = if (isActive) teal else inactive,
+                )
+            }
         }
     }
 }
