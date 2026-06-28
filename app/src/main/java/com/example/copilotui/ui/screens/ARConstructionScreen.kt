@@ -1,7 +1,12 @@
 package com.example.copilotui.ui.screens
 
 import android.graphics.Bitmap
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.*
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,8 +21,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -33,10 +42,6 @@ fun ARConstructionScreen(
     onVerify: () -> Unit,
     onHelp: () -> Unit,
 ) {
-    val arrowAlpha by rememberInfiniteTransition(label = "arrow").animateFloat(
-        0.5f, 1f, infiniteRepeatable(tween(1800, easing = LinearEasing), RepeatMode.Reverse), label = "aa"
-    )
-
     val stepIndex = viewModel.currentStepIndex
     val stepTitle = viewModel.buildSteps.getOrElse(stepIndex) { "Unknown Step" }
     val totalSteps = viewModel.buildSteps.size
@@ -49,7 +54,6 @@ fun ARConstructionScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
 
-        // Live camera feed replaces hatch background
         ArCameraView(
             modifier = Modifier.fillMaxSize(),
             onStateChange = { arState = it },
@@ -90,45 +94,16 @@ fun ARConstructionScreen(
             }
         }
 
-        // Placement guide
-        Box(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .size(width = 150.dp, height = 160.dp)
-                .drawBehind {
-                    drawRect(
-                        Color.White.copy(0.85f),
-                        style = Stroke(
-                            width = 2.dp.toPx(),
-                            pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(8f, 5f)),
-                        ),
-                    )
-                },
-            contentAlignment = Alignment.Center,
+        // Step ghost overlay + dimensions label
+        Column(
+            modifier = Modifier.align(Alignment.Center),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Icon(
-                Icons.Rounded.ArrowUpward, null,
-                tint = Color.White.copy(arrowAlpha),
-                modifier = Modifier.size(44.dp),
-            )
-            Text(
-                "place wall here",
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .offset(y = (-20).dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(Color.Black.copy(0.6f))
-                    .padding(horizontal = 7.dp, vertical = 2.dp),
-                fontSize = 10.sp,
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.W500,
-                color = Color.White,
-            )
+            StepGhostOverlay(stepIndex = stepIndex)
             Text(
                 dimensions,
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .offset(y = 20.dp)
                     .clip(RoundedCornerShape(6.dp))
                     .background(Color.Black.copy(0.6f))
                     .padding(horizontal = 7.dp, vertical = 2.dp),
@@ -185,7 +160,6 @@ fun ARConstructionScreen(
                 .padding(start = 16.dp, end = 16.dp, top = 13.dp, bottom = 18.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // Progress bar driven by currentStepIndex
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -201,7 +175,6 @@ fun ARConstructionScreen(
                 )
             }
 
-            // Buttons
             Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                 Box(
                     modifier = Modifier
@@ -235,6 +208,100 @@ fun ARConstructionScreen(
                         Text("Help", fontSize = 12.sp, fontWeight = FontWeight.W600, color = Color(0xFFF0F0EE))
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StepGhostOverlay(stepIndex: Int) {
+    val infiniteTransition = rememberInfiniteTransition(label = "ghost")
+    val pulse by infiniteTransition.animateFloat(
+        initialValue = 0.5f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(tween(800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "pulse",
+    )
+
+    AnimatedContent(
+        targetState = stepIndex,
+        transitionSpec = { fadeIn(tween(350)) togetherWith fadeOut(tween(250)) },
+        label = "stepOverlay",
+    ) { step ->
+        Box(
+            modifier = Modifier.size(width = 260.dp, height = 180.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val teal = Color(0xFF00BCD4)
+                val orange = Color(0xFFFF6B35)
+                val green = Color(0xFF4CAF50)
+                val w = size.width
+                val h = size.height
+
+                when (step) {
+                    0 -> { // Mark Foundation
+                        drawRect(teal.copy(alpha = 0.08f))
+                        drawRect(
+                            color = teal.copy(alpha = 0.6f),
+                            style = Stroke(width = 2.5.dp.toPx()),
+                        )
+                    }
+                    1 -> { // Place Corner Posts
+                        val r = 12.dp.toPx()
+                        listOf(
+                            Offset(r, r), Offset(w - r, r),
+                            Offset(r, h - r), Offset(w - r, h - r),
+                        ).forEach { center ->
+                            drawCircle(teal.copy(alpha = pulse), radius = r, center = center)
+                        }
+                    }
+                    2 -> { // Raise Walls
+                        val r = 12.dp.toPx()
+                        val dash = PathEffect.dashPathEffect(floatArrayOf(12f, 8f))
+                        listOf(
+                            Offset(r, r) to Offset(w - r, r),
+                            Offset(w - r, r) to Offset(w - r, h - r),
+                            Offset(w - r, h - r) to Offset(r, h - r),
+                            Offset(r, h - r) to Offset(r, r),
+                        ).forEach { (a, b) ->
+                            drawLine(teal.copy(0.85f), a, b, strokeWidth = 2.5.dp.toPx(), pathEffect = dash)
+                        }
+                    }
+                    3 -> { // Install Roof Frame
+                        val dash = PathEffect.dashPathEffect(floatArrayOf(12f, 8f))
+                        drawLine(orange.copy(0.85f), Offset(0f, 0f), Offset(w, h), strokeWidth = 2.5.dp.toPx(), pathEffect = dash)
+                        drawLine(orange.copy(0.85f), Offset(w, 0f), Offset(0f, h), strokeWidth = 2.5.dp.toPx(), pathEffect = dash)
+                    }
+                    4 -> { // Secure & Finish
+                        drawRect(green.copy(alpha = 0.15f))
+                        val checkPath = Path().apply {
+                            moveTo(w * 0.27f, h * 0.50f)
+                            lineTo(w * 0.43f, h * 0.67f)
+                            lineTo(w * 0.73f, h * 0.34f)
+                        }
+                        drawPath(
+                            checkPath,
+                            green.copy(alpha = 0.9f),
+                            style = Stroke(
+                                width = 4.dp.toPx(),
+                                cap = StrokeCap.Round,
+                                join = StrokeJoin.Round,
+                            ),
+                        )
+                    }
+                }
+            }
+
+            // Text label for step 1
+            if (step == 0) {
+                Text(
+                    "FOUNDATION",
+                    fontSize = 10.sp,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.W600,
+                    color = Color(0xFF00BCD4).copy(alpha = 0.9f),
+                )
             }
         }
     }
